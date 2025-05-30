@@ -55,8 +55,7 @@ def run_command(
         if capture_output:
             if process.stdout:
                 return process.stdout.strip()
-            else:
-                return ""
+            return ""
         return True
     except subprocess.TimeoutExpired:
         print(f"Error: Command timed out - {' '.join(command_args)}")
