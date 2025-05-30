@@ -1,3 +1,8 @@
+"""
+This script updates DNS records for FreeDNS (freedns.afraid.org).
+It prompts the user for their FreeDNS username and password and uses the
+DynDNS v2 protocol to update the IP address for a specified domain.
+"""
 import getpass
 import sys
 import requests
@@ -33,13 +38,13 @@ def update_dns(domain_name, ip_address):
     # update_url = f"https://freedns.afraid.org/nic/update?hostname={domain_name}&myip={ip_address}"
 
 
-    print(f"Contacting FreeDNS update URL (credentials hidden)...")
+    print("Contacting FreeDNS update URL (credentials hidden)...")
     try:
         response = requests.get(update_url, auth=(username, password), timeout=30)
-        
+
         # No need to explicitly call response.raise_for_status() if we check content,
         # as some non-200 responses from DynDNS services are informational (e.g., "nochg").
-        
+
         response_text = response.text.strip()
         print(f"FreeDNS server response: \"{response_text}\" (Status Code: {response.status_code})")
 
@@ -49,7 +54,7 @@ def update_dns(domain_name, ip_address):
             return True
         # Handle common error responses explicitly for better user feedback
         elif response_text.lower().startswith("badauth"):
-            print(f"Error: DNS update failed - Bad Authentication. Please check your FreeDNS username and password.")
+            print("Error: DNS update failed - Bad Authentication. Please check your FreeDNS username and password.")
             return False
         elif response_text.lower().startswith("nohost"):
             print(f"Error: DNS update failed - Hostname '{domain_name}' not found or not configured for dynamic DNS with your account.")
@@ -58,7 +63,7 @@ def update_dns(domain_name, ip_address):
             print(f"Error: DNS update failed - Username '{username}' is blocked due to abuse.")
             return False
         elif response_text.lower().startswith("!donator"):
-            print(f"Error: DNS update failed - Request includes a feature not available to general users (e.g., wildcard).")
+            print("Error: DNS update failed - Request includes a feature not available to general users (e.g., wildcard).")
             return False
         elif response_text.lower().startswith("notfqdn"):
             print(f"Error: DNS update failed - Hostname '{domain_name}' is not a fully-qualified domain name.")
