@@ -1,0 +1,35 @@
+# This is a template for the Kubernetes Ingress resource.
+# The deploy.py script will replace {{ TARGET_DOMAIN }} with the
+# domain provided via the --domain argument.
+# It's configured to use Google Managed Certificates.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: n8n-ingress
+  namespace: n8n # Ensure this matches your target Kubernetes namespace
+  annotations:
+    kubernetes.io/ingress.class: "gce" # For GKE. Use "gce-internal" for internal LBs.
+    networking.gke.io/managed-certificates: "n8n-managed-cert" # Matches ManagedCertificate metadata.name
+    kubernetes.io/ingress.allow-http: "true"  # Allow HTTP for potential redirection
+    # Optional: If you have a static IP reserved in GCP and want to use it:
+    # kubernetes.io/ingress.global-static-ip-name: "your-static-ip-name"
+    # Optional: For HTTP to HTTPS redirection, you might need a FrontendConfig
+    networking.gke.io/v1beta1.FrontendConfig: "n8n-frontend-config" 
+    # (Requires creating a FrontendConfig resource: apiVersion: networking.gke.io/v1beta1, kind: FrontendConfig, metadata: {name: my-n8n-frontendconfig}, spec: {redirectToHttps: {enabled: true}})
+spec:
+  rules:
+  - host: "{{ TARGET_DOMAIN }}"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix # Or ImplementationSpecific for GKE default
+        backend:
+          service:
+            name: n8n # Name of your n8n Kubernetes Service
+            port:
+              number: 5678 # Port exposed by your n8n Service
+#  tls: # This section tells the Ingress controller to secure traffic for these hosts
+#  - hosts:
+#    - "{{ TARGET_DOMAIN }}"
+    # secretName is NOT specified here when using networking.gke.io/managed-certificates
+    # GKE will automatically create and manage the secret.

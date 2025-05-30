@@ -1,0 +1,11 @@
+# This is a template for the Google Cloud ManagedCertificate resource.
+# The deploy.py script will replace {{ TARGET_DOMAIN }} with the
+# domain provided via the --domain argument.
+apiVersion: networking.gke.io/v1 # Use v1beta1 if your GKE version requires it
+kind: ManagedCertificate
+metadata:
+  name: n8n-managed-cert # This name is referenced in the Ingress annotations
+  namespace: n8n # Ensure this matches your target Kubernetes namespace
+spec:
+  domains:
+    - "{{ TARGET_DOMAIN }}"
