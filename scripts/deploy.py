@@ -11,7 +11,7 @@ import types
 from pathlib import Path
 
 # Import helper functions
-from deployment_helpers import (
+from scripts.deployment_helpers import (
     run_kubectl_command,
     delete_resource_if_force,
     delete_namespace_if_force,
@@ -567,26 +567,10 @@ def _handle_dns_update_flow(
     )
 
     # Determine if DNS update should be performed
-    should_perform_dns_update = False
-
-    if actions_to_run["dns"]:  # --update-dns-only
-        should_perform_dns_update = True
-    elif args.update_dns:
-        # Check if using --deploy-all or no specific flags
-        specific_deploy_flags = [
-            getattr(args, f"deploy_{comp}")
-            for comp in ["namespace", "storage", "postgres", "n8n", "ingress"]
-        ]
-        is_deploy_all_scenario = (
-            not any(specific_deploy_flags) or
-            args.deploy_all
-        )
-
-        if is_deploy_all_scenario:
-            should_perform_dns_update = True
-        # Check if specific components were deployed
-        elif any_component_flag_set_for_dns_check:
-            should_perform_dns_update = True
+    should_perform_dns_update = (
+        actions_to_run["dns"] or  # --update-dns-only
+        (args.update_dns and any_component_flag_set_for_dns_check)
+    )
 
     if should_perform_dns_update:
         if not args.domain:

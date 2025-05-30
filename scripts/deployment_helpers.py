@@ -196,7 +196,7 @@ def wait_for_resource(
                     f"within {timeout_seconds}s."
                 )
                 print(timeout_msg)
-                return False
+                raise
         # If an unexpected error other than SystemExit occurs
         # (which run_kubectl_command should prevent),
         # let it propagate for clearer debugging.
@@ -300,6 +300,117 @@ def process_yaml_template(
         print(msg)
         sys.exit(1)
 
+# --- n8n Deployment YAML Processing Helpers ---
+
+def _load_and_validate_n8n_template(template_path: Path) -> dict[str, Any]:
+    """Loads and validates the structure of the n8n deployment YAML template."""
+    try:
+        with open(template_path, 'r', encoding='UTF-8') as f:
+            deployment: dict[str, Any] = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Template file not found at {template_path}")
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML template {template_path}: {e}")
+        sys.exit(1)
+    except PermissionError as e:
+        print(f"Error reading template {template_path} (PermissionError): {e}")
+        sys.exit(1)
+    except UnicodeError as e:
+        print(f"Error reading template {template_path} (UnicodeError): {e}")
+        sys.exit(1)
+    except OSError as e:
+        print(f"Error reading template {template_path} (OSError): {e}")
+        sys.exit(1)
+
+
+    valid_structure = (
+        deployment and
+        isinstance(deployment.get('spec'), dict) and
+        isinstance(deployment['spec'].get('template'), dict) and
+        isinstance(deployment['spec']['template'].get('spec'), dict) and
+        isinstance(
+            deployment['spec']['template']['spec'].get('containers'),
+            list
+        ) and
+        len(deployment['spec']['template']['spec']['containers']) > 0
+    )
+
+    if not valid_structure:
+        msg = f"Error: Invalid structure in n8n deployment template {template_path}"
+        print(msg)
+        sys.exit(1)
+    return deployment
+
+def _update_n8n_env_vars(
+    deployment: dict[str, Any],
+    target_domain: str
+) -> None:
+    """Updates the environment variables in the n8n container spec."""
+    env_vars_to_set = {
+        "N8N_HOST": target_domain,
+        "N8N_PROTOCOL": "https",
+        "N8N_PORT": "5678"
+    }
+    try:
+        container_spec = deployment['spec']['template']['spec']['containers'][0]
+
+        if not isinstance(container_spec.get('env'), list):
+            container_spec['env'] = []
+
+        current_env_vars: list[dict[str, str]] = container_spec['env']
+
+        for key_to_set, value_to_set in env_vars_to_set.items():
+            found = False
+            for env_var in current_env_vars:
+                if env_var.get('name') == key_to_set:
+                    env_var['value'] = value_to_set
+                    found = True
+                    break
+            if not found:
+                current_env_vars.append({
+                    'name': key_to_set,
+                    'value': str(value_to_set)
+                })
+    except (KeyError, TypeError, IndexError) as e:
+        # IndexError for cases where 'containers' might be empty after initial check
+        # (though unlikely given the validation)
+        msg = f"Error processing n8n deployment data structure (DataError): {e}"
+        print(msg)
+        sys.exit(1)
+
+
+def _write_processed_n8n_yaml(
+    deployment: dict[str, Any],
+    output_path: Path,
+    temp_yaml_dir: Path
+) -> None:
+    """Writes the processed n8n deployment YAML to the output file."""
+    try:
+        temp_yaml_dir.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='UTF-8') as f:
+            yaml.dump(
+                deployment,
+                f,
+                sort_keys=False,
+                Dumper=yaml.SafeDumper
+            )
+    except PermissionError as e:
+        msg = f"Error writing processed YAML to {output_path} (PermissionError): {e}"
+        print(msg)
+        sys.exit(1)
+    except UnicodeError as e:
+        msg = f"Error writing processed YAML to {output_path} (UnicodeError): {e}"
+        print(msg)
+        sys.exit(1)
+    except OSError as e:
+        msg = f"Error writing processed YAML to {output_path} (OSError): {e}"
+        print(msg)
+        sys.exit(1)
+    except yaml.YAMLError as e: # Should not happen with dump, but good practice
+        print(f"Error during YAML serialization for {output_path}: {e}")
+        sys.exit(1)
+
 def process_n8n_deployment_env(
     template_path: Path,
     output_path: Path,
@@ -323,95 +434,16 @@ def process_n8n_deployment_env(
     """
     print(f"Updating n8n deployment env vars in: {template_path} -> {output_path}")
 
-    try:
-        # Load the template
-        with open(template_path, 'r', encoding='UTF-8') as f:
-            deployment: dict[str, Any] = yaml.safe_load(f)
+    # Step 1: Load and validate the template
+    deployment = _load_and_validate_n8n_template(template_path)
 
-        # Define environment variables to set
-        env_vars_to_set = {
-            "N8N_HOST": target_domain,
-            "N8N_PROTOCOL": "https",
-            "N8N_PORT": "5678"
-        }
+    # Step 2: Update environment variables
+    _update_n8n_env_vars(deployment, target_domain)
 
-        # Validate deployment structure
-        valid_structure = (
-            deployment and
-            isinstance(deployment.get('spec'), dict) and
-            isinstance(deployment['spec'].get('template'), dict) and
-            isinstance(deployment['spec']['template'].get('spec'), dict) and
-            isinstance(
-                deployment['spec']['template']['spec'].get('containers'),
-                list
-            ) and
-            len(deployment['spec']['template']['spec']['containers']) > 0
-        )
+    # Step 3: Write the processed YAML
+    _write_processed_n8n_yaml(deployment, output_path, temp_yaml_dir)
 
-        if not valid_structure:
-            msg = f"Error: Invalid structure in n8n deployment template {template_path}"
-            print(msg)
-            sys.exit(1)
-
-        # Get container specification
-        container_spec = (
-            deployment['spec']['template']['spec']['containers'][0]
-        )
-
-        # Initialize or validate env list
-        if not isinstance(container_spec.get('env'), list):
-            container_spec['env'] = []
-
-        # Type assertion for current environment variables
-        current_env_vars: list[dict[str, str]] = container_spec['env']
-
-        # Update environment variables
-        for key_to_set, value_to_set in env_vars_to_set.items():
-            found = False
-            for env_var in current_env_vars:
-                if env_var.get('name') == key_to_set:
-                    env_var['value'] = value_to_set
-                    found = True
-                    break
-            if not found:
-                current_env_vars.append({
-                    'name': key_to_set,
-                    'value': str(value_to_set)
-                })
-
-        # Ensure output directory exists and write updated YAML
-        temp_yaml_dir.mkdir(parents=True, exist_ok=True)
-        with open(output_path, 'w', encoding='UTF-8') as f:
-            yaml.dump(
-                deployment,
-                f,
-                sort_keys=False,
-                Dumper=yaml.SafeDumper
-            )
-        return output_path
-
-    except FileNotFoundError:
-        print(f"Error: Template file not found at {template_path}")
-        sys.exit(1)
-    except yaml.YAMLError as e:
-        print(f"Error parsing YAML template {template_path}: {e}")
-        sys.exit(1)
-    except PermissionError as e:
-        msg = f"Error processing template {template_path} (PermissionError): {e}"
-        print(msg)
-        sys.exit(1)
-    except UnicodeError as e:
-        msg = f"Error processing template {template_path} (UnicodeError): {e}"
-        print(msg)
-        sys.exit(1)
-    except (KeyError, TypeError) as e:
-        msg = f"Error processing template {template_path} (DataError): {e}"
-        print(msg)
-        sys.exit(1)
-    except OSError as e:
-        msg = f"Error processing template {template_path} (OSError): {e}"
-        print(msg)
-        sys.exit(1)
+    return output_path
 
 def cleanup_temp_yamls(temp_yaml_dir: Path) -> None:
     """
