@@ -11,7 +11,7 @@ import types
 from pathlib import Path
 
 # Import helper functions
-from scripts.deployment_helpers import (
+from deployment_helpers import (
     run_kubectl_command,
     delete_resource_if_force,
     delete_namespace_if_force,
