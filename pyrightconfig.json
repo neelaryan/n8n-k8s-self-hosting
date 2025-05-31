@@ -1,0 +1,31 @@
+{
+  "include": [
+    "scripts"
+  ],
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    ".vscode",
+    "infra",
+    "**/node_modules"
+  ],
+  "pythonVersion": "3.13",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "strict",
+  "venvPath": ".",
+  "venv": ".venv",
+
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": "error",
+  "reportUnusedImport": "error",
+
+  "reportPrivateUsage": "error",
+  "reportUnusedClass": "error",
+  "reportUnnecessaryTypeIgnoreComment": "none",
+  "executionEnvironments": [
+    {
+      "root": "scripts",
+      "extraPaths": []
+    }
+  ]
+}

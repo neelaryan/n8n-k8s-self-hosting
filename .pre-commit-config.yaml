@@ -1,0 +1,49 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0 # Using a recent stable version
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+        # Exclude k8s templates that might have Jinja-like templating
+        exclude: ^infra/n8n/.*\.yaml\.template$
+    -   id: check-json
+    # -   id: check-toml # Uncomment if you use TOML files (e.g., pyproject.toml)
+
+-   repo: https://github.com/pylint-dev/pylint
+    # Find the latest pylint version compatible with pre-commit or your project's pylint version
+    # Check their releases/tags. Using a recent version as an example.
+    rev: v3.2.5 # Or consider using a tag like 'main' or a specific commit SHA for latest
+    hooks:
+    -   id: pylint
+        name: pylint-scripts
+        args: [
+            "--rcfile=.pylintrc",
+            # "--persistent=no" # Not typically needed with pre-commit's file-based runs
+        ]
+        files: ^scripts/.*\.py$ # Target Python files in the scripts directory
+        # types: [python] # Alternative to 'files'
+        additional_dependencies:
+        - requests
+        - PyYAML
+        # Pylint should pick up .pylintrc from the root by default.
+        # PYTHONPATH is generally not needed if imports are standard and dependencies are listed.
+
+# For Pyright, using a local hook with npx is robust.
+# This assumes Node.js/npm are installed and `npm install` has been run
+# to make `pyright` available in `node_modules/.bin`.
+-   repo: local
+    hooks:
+    -   id: pyright
+        name: pyright
+        entry: npx --no-install pyright # Uses local node_modules/.bin/pyright
+        language: node
+        language_version: '22.14.0'
+        pass_filenames: false # Pyright scans based on its configuration (pyrightconfig.json)
+        files: \.(py|pyi)$ # Regex to trigger on Python file changes
+        # `types: [python]` could also be used instead of `files`
+        additional_dependencies: ["pyright@^1.1.401"] # Match version in your package.json
+                                                     # This ensures the hook's env has pyright
+                                                     # if npx needs to fetch it.

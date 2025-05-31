@@ -22,4 +22,4 @@ jobs:
       env:
         PYTHONPATH: ${{ github.workspace }}/scripts
       run: |
-        pylint *.py
+        pylint --persistent=no $(git ls-files *.py)

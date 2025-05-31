@@ -1,0 +1,11 @@
+{
+  "name": "n8n-k8s-self-hosting-scripts-linter",
+  "version": "1.0.0",
+  "description": "Linter and type checker configurations for Python scripts",
+  "scripts": {
+    "pyright": "pyright"
+  },
+  "devDependencies": {
+    "pyright": "^1.1.401"
+  }
+}

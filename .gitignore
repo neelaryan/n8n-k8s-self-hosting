@@ -3,3 +3,5 @@
 *.pyc
 __pycache__/
 scripts/.tmp_yamls/
+.pylint.d/
+node_modules/
