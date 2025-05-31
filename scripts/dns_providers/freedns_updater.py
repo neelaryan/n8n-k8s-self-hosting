@@ -79,17 +79,17 @@ def update_dns(domain_name: str, ip_address: str) -> bool:
         return False
 
     # DynDNS v2 protocol URL structure for freedns.afraid.org
-    base_url = "http://freedns.afraid.org/nic/update"
+    # base_url = "http://freedns.afraid.org/nic/update"
+    # update_url = (
+    #    f"{base_url}?hostname={domain_name}"
+    #    f"&myip={ip_address}"
+    #)
+    # If HTTPS is preferred and supported:
+    base_url_https = "https://freedns.afraid.org/nic/update"
     update_url = (
-        f"{base_url}?hostname={domain_name}"
+        f"{base_url_https}?hostname={domain_name}"
         f"&myip={ip_address}"
     )
-    # If HTTPS is preferred and supported:
-    # base_url_https = "https://freedns.afraid.org/nic/update"
-    # update_url = (
-    # f"{base_url_https}?hostname={domain_name}"
-    # f"&myip={ip_address}"
-    # )
 
     print("Contacting FreeDNS update URL (credentials hidden)...")
     try:
